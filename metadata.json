@@ -1,0 +1,6 @@
+{
+  "name": "Half-Life 3: The Borealis Incursion",
+  "description": "The playable in-browser chapter of Half-Life 3: Gordon Freeman in the Arctic wasteland, wielding the Gravity Gun, Crowbar, and Pulse Rifle against Combine forces at the Borealis facility.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

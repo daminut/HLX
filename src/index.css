@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #030712;
+    color: #f3f4f6;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}
+
+/* HEV Amber HUD accents */
+.hud-amber {
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.45), 0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+.hud-border-amber {
+  border-color: rgba(251, 191, 36, 0.4);
+  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.15), 0 0 15px rgba(245, 158, 11, 0.15);
+}
+
+.hud-bg-amber {
+  background: rgba(18, 14, 8, 0.85);
+}
+
+.hud-combine-blue {
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
