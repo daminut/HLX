@@ -1249,8 +1249,16 @@ export class HalfLifeEngine {
     this.heldProp.mesh.position.lerp(targetPos, 14 * dt);
     this.heldProp.velocity.set(0, 0, 0);
 
-    // Subtle magnetic levitation hover
+    // Subtle magnetic levitation hover & slow spin
     this.heldProp.mesh.rotation.y += dt * 1.5;
+
+    // Emit blue energy sparks between gravity gun and held prop
+    if (Math.random() < 0.25) {
+      const sparkPos = this.heldProp.mesh.position.clone().add(
+        new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4)
+      );
+      this.spawnParticles(sparkPos, 1, 0x38bdf8, 2);
+    }
   }
 
   private updatePhysicsProps(dt: number) {
@@ -1419,6 +1427,14 @@ export class HalfLifeEngine {
       if (this.activeWeapon === 'crowbar') {
         currentModel.rotation.z = -0.2 - this.swingAngle;
         currentModel.rotation.x = -0.35 + this.swingAngle * 0.6;
+      } else if (this.activeWeapon === 'gravity_gun') {
+        const crystal = currentModel.getObjectByName('gravity_core');
+        if (crystal) {
+          crystal.rotation.y += dt * 4.5;
+          crystal.rotation.x += dt * 2.5;
+          const scale = 1.0 + Math.sin(this.totalElapsedTime * 12) * 0.12;
+          crystal.scale.setScalar(scale);
+        }
       }
     }
   }
