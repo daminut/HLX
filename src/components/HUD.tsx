@@ -82,11 +82,35 @@ export const HUD: React.FC<HUDProps> = ({
       </div>
 
       {/* Notification Message (Positioned high so it never occludes crosshair) */}
-      {message && (
+      {message && !stats.activeTransmission && (
         <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-black/85 border border-amber-500/50 px-4 py-2 rounded shadow-[0_0_20px_rgba(245,158,11,0.2)] text-center max-w-lg pointer-events-auto z-30">
           <span className="text-xs font-mono text-amber-300 tracking-wide font-semibold">
             {message}
           </span>
+        </div>
+      )}
+
+      {/* Resistance & Overwatch Radio Transmission Overlay */}
+      {stats.activeTransmission && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-neutral-950/95 border-2 border-emerald-500/60 rounded-md p-4 shadow-[0_0_30px_rgba(16,185,129,0.3)] max-w-xl w-[92vw] pointer-events-auto z-40 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between border-b border-emerald-500/30 pb-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-xs font-mono font-bold tracking-widest text-emerald-400 uppercase">
+                ENCRYPTED COMMS // {stats.activeTransmission.sender}
+              </span>
+            </div>
+            {/* Audio Waveform visualization */}
+            <div className="flex items-end gap-1 h-3.5">
+              <span className="w-1 bg-emerald-400 h-2 animate-pulse" />
+              <span className="w-1 bg-emerald-400 h-3.5 animate-pulse delay-75" />
+              <span className="w-1 bg-emerald-400 h-1.5 animate-pulse delay-150" />
+              <span className="w-1 bg-emerald-400 h-3 animate-pulse delay-100" />
+            </div>
+          </div>
+          <p className="text-sm font-sans text-neutral-100 leading-relaxed drop-shadow-sm font-medium">
+            "{stats.activeTransmission.text}"
+          </p>
         </div>
       )}
 
@@ -118,42 +142,52 @@ export const HUD: React.FC<HUDProps> = ({
       {/* Bottom Clusters: Classic Half-Life Amber Gauges */}
       <div className="flex items-end justify-between w-full">
         {/* Left Cluster: HEALTH & SUIT POWER */}
-        <div className="flex items-center gap-4 bg-black/80 border border-amber-500/40 rounded p-3 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-          {/* Health */}
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 mb-1 text-[11px] font-mono tracking-widest text-amber-400 font-bold">
-              <Heart size={14} className="text-red-500 fill-red-500/40" />
-              <span>HEALTH</span>
+        <div className="flex flex-col gap-1.5 bg-black/80 border border-amber-500/40 rounded p-3 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+          {/* HEV Nanite Auto-Regen Pill */}
+          {stats.timeSinceLastDamage > 3.5 && (stats.health < (stats.maxHealth || 150) || stats.suitPower < (stats.maxSuitPower || 150)) && (
+            <div className="flex items-center gap-1.5 text-[9px] font-mono text-emerald-400 tracking-wider font-semibold mb-0.5 animate-pulse">
+              <Zap size={11} className="fill-emerald-400/40" />
+              <span>HEV NANITE AUTO-REPAIR ACTIVE</span>
             </div>
-            <div className="text-3xl md:text-4xl font-mono font-extrabold text-amber-400 tabular-nums leading-none drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
-              {Math.max(0, Math.round(stats.health))}
-            </div>
-            {/* Visual health bar */}
-            <div className="w-24 h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden border border-neutral-700">
-              <div
-                className="h-full bg-amber-400 transition-all duration-200"
-                style={{ width: `${Math.max(0, Math.min(100, stats.health))}%` }}
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="w-[1px] h-12 bg-amber-500/30" />
+          <div className="flex items-center gap-4">
+            {/* Health */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-1 text-[11px] font-mono tracking-widest text-amber-400 font-bold">
+                <Heart size={14} className="text-red-500 fill-red-500/40" />
+                <span>HEALTH</span>
+              </div>
+              <div className="text-3xl md:text-4xl font-mono font-extrabold text-amber-400 tabular-nums leading-none drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
+                {Math.max(0, Math.round(stats.health))}
+              </div>
+              {/* Visual health bar */}
+              <div className="w-24 h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden border border-neutral-700">
+                <div
+                  className="h-full bg-amber-400 transition-all duration-200"
+                  style={{ width: `${Math.max(0, Math.min(100, (stats.health / (stats.maxHealth || 150)) * 100))}%` }}
+                />
+              </div>
+            </div>
 
-          {/* HEV Suit Armor / Power */}
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 mb-1 text-[11px] font-mono tracking-widest text-amber-400 font-bold">
-              <Shield size={14} className="text-amber-400 fill-amber-400/40" />
-              <span>SUIT POWER</span>
-            </div>
-            <div className="text-3xl md:text-4xl font-mono font-extrabold text-amber-400 tabular-nums leading-none drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
-              {Math.max(0, Math.round(stats.suitPower))}
-            </div>
-            {/* Visual suit bar */}
-            <div className="w-24 h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden border border-neutral-700">
-              <div
-                className="h-full bg-amber-500 transition-all duration-200"
-                style={{ width: `${Math.max(0, Math.min(100, stats.suitPower))}%` }}
-              />
+            <div className="w-[1px] h-12 bg-amber-500/30" />
+
+            {/* HEV Suit Armor / Power */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-1 text-[11px] font-mono tracking-widest text-amber-400 font-bold">
+                <Shield size={14} className="text-amber-400 fill-amber-400/40" />
+                <span>SUIT POWER</span>
+              </div>
+              <div className="text-3xl md:text-4xl font-mono font-extrabold text-amber-400 tabular-nums leading-none drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
+                {Math.max(0, Math.round(stats.suitPower))}
+              </div>
+              {/* Visual suit bar */}
+              <div className="w-24 h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden border border-neutral-700">
+                <div
+                  className="h-full bg-amber-500 transition-all duration-200"
+                  style={{ width: `${Math.max(0, Math.min(100, (stats.suitPower / (stats.maxSuitPower || 150)) * 100))}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

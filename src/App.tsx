@@ -21,12 +21,15 @@ export default function App() {
   const messageTimeoutRef = useRef<number | null>(null);
 
   const [playerStats, setPlayerStats] = useState<PlayerStats>({
-    health: 100,
-    maxHealth: 100,
-    suitPower: 100,
-    maxSuitPower: 100,
+    health: 150,
+    maxHealth: 150,
+    suitPower: 150,
+    maxSuitPower: 150,
     stamina: 100,
     score: 0,
+    chapter: 1,
+    totalChapters: 4,
+    chapterTitle: 'CHAPTER 1: THE ARCTIC INGRESS',
     enemiesDefeated: 0,
     powerCoresInserted: 0,
     totalPowerCoresRequired: 2,
@@ -36,6 +39,8 @@ export default function App() {
     isHoldingProp: false,
     geigerLevel: 0,
     hazardDamageTimer: 0,
+    timeSinceLastDamage: 999,
+    activeTransmission: null,
   });
 
   const showMessage = useCallback((msg: string) => {

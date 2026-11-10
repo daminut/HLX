@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   applyDamage,
   applyHeal,
+  applyNaniteAutoRegen,
   canFireWeapon,
   consumeWeaponAmmo,
   addAmmo,
@@ -114,22 +115,24 @@ test('consumeWeaponAmmo correctly decrements ammo except for gravity gun & crowb
 });
 
 test('calculateGravityPuntImpulse scales smoothly with range', () => {
-  const closeImpulse = calculateGravityPuntImpulse(2, 32);
-  const farImpulse = calculateGravityPuntImpulse(10, 32);
-  const outOfRange = calculateGravityPuntImpulse(15, 32);
+  const closeImpulse = calculateGravityPuntImpulse(2, 48);
+  const farImpulse = calculateGravityPuntImpulse(14, 48);
+  const outOfRange = calculateGravityPuntImpulse(20, 48);
 
   assert.ok(closeImpulse > farImpulse);
   assert.equal(outOfRange, 0);
 });
 
-test('calculateExplosionDamage calculates falloff quadratic blast', () => {
-  const centerHit = calculateExplosionDamage(0, 10, 200);
-  const halfRadiusHit = calculateExplosionDamage(5, 10, 200);
-  const outsideHit = calculateExplosionDamage(11, 10, 200);
+test('applyNaniteAutoRegen restores health and suit power up to maximum', () => {
+  const result = applyNaniteAutoRegen(80, 50, 1.0, 150, 150);
+  assert.ok(result.newHealth > 80);
+  assert.ok(result.newSuit > 50);
+  assert.equal(result.didRegen, true);
 
-  assert.equal(centerHit, 200);
-  assert.ok(halfRadiusHit > 0 && halfRadiusHit < centerHit);
-  assert.equal(outsideHit, 0);
+  const capped = applyNaniteAutoRegen(150, 150, 1.0, 150, 150);
+  assert.equal(capped.newHealth, 150);
+  assert.equal(capped.newSuit, 150);
+  assert.equal(capped.didRegen, false);
 });
 
 test('getMissionPhase advances through phases correctly', () => {

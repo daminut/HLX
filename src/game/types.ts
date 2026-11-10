@@ -14,6 +14,12 @@ export interface WeaponInfo {
   unlocked: boolean;
 }
 
+export interface RadioTransmission {
+  sender: 'Alyx Vance' | 'Dr. Judith Mossman' | 'HEV Suit' | 'Combine Overwatch' | 'The G-Man';
+  text: string;
+  chapter: number;
+}
+
 export interface PlayerStats {
   health: number;
   maxHealth: number;
@@ -21,6 +27,9 @@ export interface PlayerStats {
   maxSuitPower: number;
   stamina: number;
   score: number;
+  chapter: number;
+  totalChapters: number;
+  chapterTitle: string;
   enemiesDefeated: number;
   powerCoresInserted: number;
   totalPowerCoresRequired: number;
@@ -30,6 +39,8 @@ export interface PlayerStats {
   isHoldingProp: boolean;
   geigerLevel: number; // 0 to 1
   hazardDamageTimer: number;
+  timeSinceLastDamage: number;
+  activeTransmission: RadioTransmission | null;
 }
 
 export type EnemyType = 'headcrab' | 'combine_soldier' | 'combine_hunter';

@@ -5,6 +5,7 @@ import {
   WeaponId,
   WeaponInfo,
   PlayerStats,
+  RadioTransmission,
 } from './types';
 import {
   applyDamage,
@@ -14,7 +15,10 @@ import {
   addAmmo,
   calculateGravityPuntImpulse,
   calculateExplosionDamage,
+  applyNaniteAutoRegen,
+  getMissionPhase,
 } from './combat';
+import { modelLoader } from './modelLoader';
 import { soundSystem } from './audio';
 import {
   createCrowbarModel,
@@ -101,11 +105,11 @@ export class HalfLifeEngine {
   private isGrounded: boolean = true;
   private isSprinting: boolean = false;
 
-  // Stats
-  private health: number = 100;
-  private maxHealth: number = 100;
-  private suitPower: number = 100;
-  private maxSuitPower: number = 100;
+  // Stats (Gordon Freeman HEV Mark V upgrades - 150 HP & 150 Suit Power)
+  private health: number = 150;
+  private maxHealth: number = 150;
+  private suitPower: number = 150;
+  private maxSuitPower: number = 150;
   private score: number = 0;
   private enemiesDefeated: number = 0;
   private coresInserted: number = 0;
@@ -113,8 +117,12 @@ export class HalfLifeEngine {
   private bossDefeated: boolean = false;
   private portalReached: boolean = false;
   private geigerLevel: number = 0;
+  private timeSinceLastDamage: number = 999;
+  private currentChapter: number = 1;
+  private activeTransmission: RadioTransmission | null = null;
+  private activeTransmissionTimer: number = 0;
 
-  // Weapons
+  // Weapons (Enhanced punch & precision)
   private activeWeapon: WeaponId = 'crowbar';
   private weapons: Record<WeaponId, WeaponInfo> = {
     crowbar: {
@@ -125,7 +133,7 @@ export class HalfLifeEngine {
       maxAmmo: 1,
       currentAmmo: 1,
       cooldown: 0.38,
-      damage: 35,
+      damage: 65,
       unlocked: true,
     },
     gravity_gun: {
@@ -136,7 +144,7 @@ export class HalfLifeEngine {
       maxAmmo: 1,
       currentAmmo: 1,
       cooldown: 0.3,
-      damage: 50,
+      damage: 65,
       unlocked: true,
     },
     pulse_rifle: {
@@ -147,7 +155,7 @@ export class HalfLifeEngine {
       maxAmmo: 120,
       currentAmmo: 60,
       cooldown: 0.12,
-      damage: 24,
+      damage: 38,
       unlocked: true,
     },
     shotgun: {
@@ -158,7 +166,7 @@ export class HalfLifeEngine {
       maxAmmo: 32,
       currentAmmo: 16,
       cooldown: 0.75,
-      damage: 90,
+      damage: 150,
       unlocked: true,
     },
   };
@@ -336,6 +344,20 @@ export class HalfLifeEngine {
 
   private initWorld() {
     this.worldData = buildBorealisWorld(this.scene);
+
+    // High definition 3D Primary Ion Drive model
+    modelLoader.loadModel('/models/PrimaryIonDrive.glb').then((drive) => {
+      if (drive && !this.isDestroyed) {
+        drive.position.set(20, 0, -15);
+        const box = new THREE.Box3().setFromObject(drive);
+        const size = box.getSize(new THREE.Vector3());
+        if (size.y > 0) {
+          const targetH = 5.6;
+          drive.scale.setScalar(targetH / size.y);
+        }
+        this.scene.add(drive);
+      }
+    });
   }
 
   private initWeapons() {
@@ -448,7 +470,7 @@ export class HalfLifeEngine {
       const mesh = createCombineSoldierMesh();
       mesh.position.copy(pos);
       this.scene.add(mesh);
-      this.enemies.push({
+      const enemyObj: Enemy = {
         id: `soldier_${idx}`,
         type: 'combine_soldier',
         mesh,
@@ -461,6 +483,23 @@ export class HalfLifeEngine {
         isTelegraphing: false,
         telegraphTimer: 0,
         deadTimer: 0,
+      };
+      this.enemies.push(enemyObj);
+
+      // Upgrade with 3D Soldier model from /models/Soldier.glb
+      modelLoader.loadModel('/models/Soldier.glb').then((soldierGltf) => {
+        if (soldierGltf && !this.isDestroyed && enemyObj.state !== 'dead') {
+          const box = new THREE.Box3().setFromObject(soldierGltf);
+          const size = box.getSize(new THREE.Vector3());
+          if (size.y > 0) {
+            const targetHeight = 1.85;
+            soldierGltf.scale.setScalar(targetHeight / size.y);
+          }
+          while (mesh.children.length > 0) {
+            mesh.remove(mesh.children[0]);
+          }
+          mesh.add(soldierGltf);
+        }
       });
     });
 
@@ -638,6 +677,17 @@ export class HalfLifeEngine {
     soundSystem.startAmbient();
     soundSystem.playHEVChime();
     this.callbacks.onMessage('HEV Mark V Suit Powered. Gordon Freeman initialized.');
+
+    // Initialize Chapter 1 Transmission
+    const phase1 = getMissionPhase(0, false, false);
+    this.currentChapter = 1;
+    this.activeTransmission = {
+      sender: phase1.radioSender,
+      text: phase1.radioMessage,
+      chapter: 1,
+    };
+    this.activeTransmissionTimer = 7.0;
+
     this.renderer.domElement.requestPointerLock?.();
   }
 
@@ -659,8 +709,8 @@ export class HalfLifeEngine {
     // Reset player position and stats
     this.playerPos.set(0, 1.7, 24);
     this.playerVelocity.set(0, 0, 0);
-    this.health = 100;
-    this.suitPower = 100;
+    this.health = 150;
+    this.suitPower = 150;
     this.score = 0;
     this.enemiesDefeated = 0;
     this.coresInserted = 0;
@@ -668,6 +718,7 @@ export class HalfLifeEngine {
     this.bossDefeated = false;
     this.portalReached = false;
     this.heldProp = null;
+    this.timeSinceLastDamage = 999;
 
     // Reset weapons
     this.weapons.pulse_rifle.currentAmmo = 60;
@@ -679,8 +730,18 @@ export class HalfLifeEngine {
     this.props = [];
     this.enemies.forEach((e) => this.scene.remove(e.mesh));
     this.enemies = [];
+
     this.initPropsAndEnemies();
 
+    // Trigger chapter 1 radio transmission
+    const phase1 = getMissionPhase(0, false, false);
+    this.currentChapter = 1;
+    this.activeTransmission = {
+      sender: phase1.radioSender,
+      text: phase1.radioMessage,
+      chapter: 1,
+    };
+    this.activeTransmissionTimer = 7.0;
     // Re-enable forcefield
     if (this.worldData.forcefieldMesh) {
       this.worldData.forcefieldMesh.visible = true;
@@ -1005,12 +1066,12 @@ export class HalfLifeEngine {
       bossMesh.position.set(0, 0, -26);
       this.scene.add(bossMesh);
 
-      this.enemies.push({
+      const bossEnemy: Enemy = {
         id: 'combine_hunter_boss',
         type: 'combine_hunter',
         mesh: bossMesh,
-        health: 500,
-        maxHealth: 500,
+        health: 550,
+        maxHealth: 550,
         speed: 3.8,
         state: 'chase',
         timer: 0,
@@ -1018,6 +1079,23 @@ export class HalfLifeEngine {
         isTelegraphing: false,
         telegraphTimer: 0,
         deadTimer: 0,
+      };
+      this.enemies.push(bossEnemy);
+
+      // Upgrade with 3D Robot Mech model from /models/RobotExpressive.glb
+      modelLoader.loadModel('/models/RobotExpressive.glb').then((bossGltf) => {
+        if (bossGltf && !this.isDestroyed && bossEnemy.state !== 'dead') {
+          const box = new THREE.Box3().setFromObject(bossGltf);
+          const size = box.getSize(new THREE.Vector3());
+          if (size.y > 0) {
+            const targetHeight = 3.2;
+            bossGltf.scale.setScalar(targetHeight / size.y);
+          }
+          while (bossMesh.children.length > 0) {
+            bossMesh.remove(bossMesh.children[0]);
+          }
+          bossMesh.add(bossGltf);
+        }
       });
     }
   }
@@ -1025,6 +1103,7 @@ export class HalfLifeEngine {
   public takePlayerDamage(amount: number) {
     if (this.gameState !== 'playing') return;
 
+    this.timeSinceLastDamage = 0;
     const res = applyDamage(this.health, this.suitPower, amount);
     this.health = res.newHealth;
     this.suitPower = res.newSuitPower;
@@ -1153,6 +1232,46 @@ export class HalfLifeEngine {
     this.checkGeigerZones(dt);
     this.checkVictoryCondition();
 
+    // HEV Mark V Nanite Auto-Regeneration (Out of combat for > 3.5s)
+    this.timeSinceLastDamage += dt;
+    if (this.timeSinceLastDamage > 3.5) {
+      const regen = applyNaniteAutoRegen(
+        this.health,
+        this.suitPower,
+        dt,
+        this.maxHealth,
+        this.maxSuitPower
+      );
+      this.health = regen.newHealth;
+      this.suitPower = regen.newSuit;
+    }
+
+    // Story chapters & Resistance Radio Transmission tracking
+    const currentMission = getMissionPhase(
+      this.coresInserted,
+      this.bossDefeated,
+      this.portalReached
+    );
+
+    if (currentMission.phase !== this.currentChapter) {
+      this.currentChapter = currentMission.phase;
+      this.activeTransmission = {
+        sender: currentMission.radioSender,
+        text: currentMission.radioMessage,
+        chapter: currentMission.phase,
+      };
+      this.activeTransmissionTimer = 7.5;
+      soundSystem.playHEVChime();
+      this.callbacks.onMessage(`DIRECTIVE UPDATE: ${currentMission.chapterTitle}`);
+    }
+
+    if (this.activeTransmissionTimer > 0) {
+      this.activeTransmissionTimer -= dt;
+      if (this.activeTransmissionTimer <= 0) {
+        this.activeTransmission = null;
+      }
+    }
+
     // Broadcast updated stats to React HUD
     this.callbacks.onStatsUpdate({
       health: this.health,
@@ -1161,6 +1280,9 @@ export class HalfLifeEngine {
       maxSuitPower: this.maxSuitPower,
       stamina: 100,
       score: this.score,
+      chapter: currentMission.phase,
+      totalChapters: 4,
+      chapterTitle: currentMission.chapterTitle,
       enemiesDefeated: this.enemiesDefeated,
       powerCoresInserted: this.coresInserted,
       totalPowerCoresRequired: 2,
@@ -1170,6 +1292,8 @@ export class HalfLifeEngine {
       isHoldingProp: this.heldProp !== null,
       geigerLevel: this.geigerLevel,
       hazardDamageTimer: 0,
+      timeSinceLastDamage: this.timeSinceLastDamage,
+      activeTransmission: this.activeTransmission,
     });
   }
 

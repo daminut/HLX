@@ -386,16 +386,88 @@ function createDetailedCrateTexture(): THREE.CanvasTexture {
 }
 
 // -------------------------------------------------------------
-// HIGH-FIDELITY WEAPON VIEWMODELS
+// GORDON FREEMAN HEV MARK V SUIT FOREARM & GLOVE
+// -------------------------------------------------------------
+
+export function createHEVArm(isLeft: boolean = false): THREE.Group {
+  const armGroup = new THREE.Group();
+
+  const hevOrangeMat = new THREE.MeshStandardMaterial({
+    color: 0xd97706, // Classic HEV Mark V orange
+    metalness: 0.5,
+    roughness: 0.35,
+  });
+
+  const underSuitMat = new THREE.MeshStandardMaterial({
+    color: 0x18181b, // Black ballistic rubber under-suit
+    metalness: 0.1,
+    roughness: 0.85,
+  });
+
+  const gloveMat = new THREE.MeshStandardMaterial({
+    color: 0x27272a, // Dark composite combat glove
+    metalness: 0.25,
+    roughness: 0.7,
+  });
+
+  // 1. Forearm base (composite under-suit)
+  const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.38, 10), underSuitMat);
+  forearm.position.set(0, -0.19, 0.12);
+  forearm.rotation.x = -0.4;
+  armGroup.add(forearm);
+
+  // 2. Heavy Orange HEV Armor Plating (forearm top shell)
+  const armorPlate = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.3), hevOrangeMat);
+  armorPlate.position.set(0, -0.16, 0.12);
+  armorPlate.rotation.x = -0.4;
+  armGroup.add(armorPlate);
+
+  // 3. Wrist guard collar
+  const wristGuard = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.06, 10), underSuitMat);
+  wristGuard.position.set(0, -0.04, 0.03);
+  armGroup.add(wristGuard);
+
+  // 4. Main Hand / Palm
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.065, 0.08), gloveMat);
+  palm.position.set(0, 0, 0);
+  armGroup.add(palm);
+
+  // 5. Orange armored knuckle plate
+  const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.02, 0.05), hevOrangeMat);
+  knuckle.position.set(0, 0.03, 0.01);
+  armGroup.add(knuckle);
+
+  // 6. Segmented fingers wrapping around handle
+  for (let i = 0; i < 4; i++) {
+    const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.065, 6), gloveMat);
+    finger.rotation.z = Math.PI / 2;
+    finger.position.set((i - 1.5) * 0.016, -0.015, -0.035);
+    armGroup.add(finger);
+  }
+
+  // 7. Thumb wrapping around front
+  const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.05, 6), gloveMat);
+  thumb.rotation.x = Math.PI / 3;
+  thumb.position.set(isLeft ? 0.038 : -0.038, 0.02, -0.02);
+  armGroup.add(thumb);
+
+  if (isLeft) {
+    armGroup.scale.x = -1;
+  }
+
+  return armGroup;
+}
+
+// -------------------------------------------------------------
+// HIGH-FIDELITY WEAPON VIEWMODELS WITH FREEMAN'S HEV ARMS
 // -------------------------------------------------------------
 
 /**
- * Procedural Crowbar (Gordon Freeman's iconic weapon)
- * 10 distinct parts: Octagonal forged shaft with chipped red paint, rubber grip sleeve with spiral cord,
- * forged steel beveled bend, split crowbar hook with nail puller notch, bottom wedge chisel.
+ * Procedural Crowbar with Gordon Freeman's HEV Mark V Arm & Glove
+ * Gripped firmly at ~45-degree angle pointing into screen center.
  */
 export function createCrowbarModel(): THREE.Group {
-  const group = new THREE.Group();
+  const root = new THREE.Group();
 
   const steelMat = new THREE.MeshStandardMaterial({
     color: 0xd4d4d8,
@@ -403,7 +475,6 @@ export function createCrowbarModel(): THREE.Group {
     roughness: 0.22,
   });
 
-  // Red lacquered metal with subtle scratches
   const redMat = new THREE.MeshStandardMaterial({
     color: 0xb91c1c,
     metalness: 0.45,
@@ -416,55 +487,65 @@ export function createCrowbarModel(): THREE.Group {
     roughness: 0.85,
   });
 
-  // 1. Main octagonal bar shaft (painted red)
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.58, 8), redMat);
+  const crowbarGroup = new THREE.Group();
+
+  // 1. Octagonal forged bar shaft (red painted)
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.58, 8), redMat);
   shaft.position.y = 0.22;
-  group.add(shaft);
+  crowbarGroup.add(shaft);
 
   // 2. Rubber grip sleeve
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.22, 8), gripMat);
-  grip.position.y = 0.14;
-  group.add(grip);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.22, 8), gripMat);
+  grip.position.y = 0.12;
+  crowbarGroup.add(grip);
 
-  // 3. Spiral cord rings around grip (3 rings)
+  // 3. Spiral cord wraps around grip
   for (let i = 0; i < 4; i++) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.002, 6, 12), steelMat);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.002, 6, 12), steelMat);
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.06 + i * 0.05;
-    group.add(ring);
+    ring.position.y = 0.05 + i * 0.045;
+    crowbarGroup.add(ring);
   }
 
   // 4. Exposed bare steel tips from chipped paint
-  const wearTop = new THREE.Mesh(new THREE.CylinderGeometry(0.0155, 0.0155, 0.04, 8), steelMat);
+  const wearTop = new THREE.Mesh(new THREE.CylinderGeometry(0.0145, 0.0145, 0.04, 8), steelMat);
   wearTop.position.y = 0.5;
-  group.add(wearTop);
+  crowbarGroup.add(wearTop);
 
-  // 5. Bottom forged steel chisel end
-  const chisel = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.003, 0.08, 8), steelMat);
+  // 5. Bottom forged steel chisel wedge
+  const chisel = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.003, 0.08, 8), steelMat);
   chisel.position.y = -0.1;
-  group.add(chisel);
+  crowbarGroup.add(chisel);
 
   // 6. Angled curved forged elbow
-  const elbow = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.14, 8), steelMat);
+  const elbow = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.14, 8), steelMat);
   elbow.position.set(-0.035, 0.56, 0);
   elbow.rotation.z = Math.PI * 0.28;
-  group.add(elbow);
+  crowbarGroup.add(elbow);
 
   // 7. Forged hook crowbar claw with split notch
   const clawL = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.09, 0.012), steelMat);
   clawL.position.set(-0.085, 0.62, 0.007);
   clawL.rotation.z = Math.PI * 0.44;
-  group.add(clawL);
+  crowbarGroup.add(clawL);
 
   const clawR = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.09, 0.012), steelMat);
   clawR.position.set(-0.085, 0.62, -0.007);
   clawR.rotation.z = Math.PI * 0.44;
-  group.add(clawR);
+  crowbarGroup.add(clawR);
 
-  // Orientation in first-person camera view
-  group.rotation.set(-0.25, 0.28, -0.15);
-  group.position.set(0.24, -0.22, -0.42);
-  return group;
+  // Attach Gordon Freeman's HEV Arm gripping the crowbar
+  const arm = createHEVArm(false);
+  arm.position.set(0.02, 0.12, 0.02);
+  arm.rotation.set(-0.1, -0.2, 0.1);
+  crowbarGroup.add(arm);
+
+  // Natural FPS ready pose: tilted forward-inward toward crosshair
+  crowbarGroup.rotation.set(-0.35, 0.45, -0.32);
+  crowbarGroup.position.set(0.22, -0.26, -0.42);
+
+  root.add(crowbarGroup);
+  return root;
 }
 
 /**
@@ -630,8 +711,19 @@ export function createGravityGunModel(): THREE.Group {
     group.add(clawHolder);
   });
 
-  group.rotation.set(-0.06, 0.22, 0);
-  group.position.set(0.24, -0.22, -0.44);
+  // Attach Gordon Freeman's HEV Arms holding the Gravity Gun
+  const rightArm = createHEVArm(false);
+  rightArm.position.set(0.04, -0.06, 0.08);
+  rightArm.rotation.set(-0.2, -0.15, 0.1);
+  group.add(rightArm);
+
+  const leftArm = createHEVArm(true);
+  leftArm.position.set(-0.09, -0.04, -0.18);
+  leftArm.rotation.set(-0.15, 0.45, -0.2);
+  group.add(leftArm);
+
+  group.rotation.set(-0.08, 0.18, 0);
+  group.position.set(0.2, -0.22, -0.42);
   return group;
 }
 
@@ -694,6 +786,17 @@ export function createPulseRifleModel(): THREE.Group {
   muzzleRing.position.set(0, 0.02, -0.6);
   group.add(muzzleRing);
 
+  // Attach Gordon Freeman's HEV Arms holding the Pulse Rifle
+  const rightArm = createHEVArm(false);
+  rightArm.position.set(0.04, -0.1, 0.06);
+  rightArm.rotation.set(-0.25, -0.1, 0.1);
+  group.add(rightArm);
+
+  const leftArm = createHEVArm(true);
+  leftArm.position.set(-0.06, -0.06, -0.16);
+  leftArm.rotation.set(-0.15, 0.35, -0.15);
+  group.add(leftArm);
+
   group.rotation.set(-0.06, 0.22, 0);
   group.position.set(0.26, -0.22, -0.48);
   return group;
@@ -742,6 +845,17 @@ export function createShotgunModel(): THREE.Group {
   grip.position.set(0, -0.1, 0.12);
   grip.rotation.x = -0.4;
   group.add(grip);
+
+  // Attach Gordon Freeman's HEV Arms holding the Shotgun
+  const sRightArm = createHEVArm(false);
+  sRightArm.position.set(0.04, -0.1, 0.1);
+  sRightArm.rotation.set(-0.25, -0.1, 0.1);
+  group.add(sRightArm);
+
+  const sLeftArm = createHEVArm(true);
+  sLeftArm.position.set(-0.06, -0.05, -0.2);
+  sLeftArm.rotation.set(-0.15, 0.35, -0.15);
+  group.add(sLeftArm);
 
   group.rotation.set(-0.06, 0.22, 0);
   group.position.set(0.26, -0.22, -0.48);

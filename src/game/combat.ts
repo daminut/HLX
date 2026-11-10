@@ -115,15 +115,43 @@ export function addAmmo(weapon: WeaponInfo, amount: number): WeaponInfo {
 }
 
 /**
+ * HEV Mark V Nanite Auto-Regeneration:
+ * When Gordon Freeman avoids taking damage for over 3.5 seconds,
+ * the suit's automated medical systems slowly repair health and recharge armor.
+ */
+export function applyNaniteAutoRegen(
+  currentHealth: number,
+  currentSuit: number,
+  dt: number,
+  maxHealth: number = 150,
+  maxSuit: number = 150
+): { newHealth: number; newSuit: number; didRegen: boolean } {
+  if (currentHealth <= 0) return { newHealth: 0, newSuit: 0, didRegen: false };
+
+  const healthRegenRate = 6.0; // HP per sec
+  const suitRegenRate = 8.0;   // Power per sec
+
+  const newHealth = Math.min(maxHealth, currentHealth + healthRegenRate * dt);
+  const newSuit = Math.min(maxSuit, currentSuit + suitRegenRate * dt);
+
+  const didRegen = newHealth > currentHealth || newSuit > currentSuit;
+
+  return {
+    newHealth,
+    newSuit,
+    didRegen,
+  };
+}
+
+/**
  * Gravity Gun impulse calculation based on distance and punt velocity
  */
 export function calculateGravityPuntImpulse(
   distance: number,
-  baseImpulse: number = 32
+  baseImpulse: number = 48
 ): number {
-  // Effective range for maximum punt is within 6 units, decays past that
-  if (distance > 12) return 0;
-  const falloff = Math.max(0.4, 1 - (distance / 12) * 0.6);
+  if (distance > 18) return 0;
+  const falloff = Math.max(0.5, 1 - (distance / 18) * 0.5);
   return baseImpulse * falloff;
 }
 
@@ -132,8 +160,8 @@ export function calculateGravityPuntImpulse(
  */
 export function calculateExplosionDamage(
   distance: number,
-  radius: number = 9,
-  maxDamage: number = 180
+  radius: number = 11,
+  maxDamage: number = 220
 ): number {
   if (distance >= radius) return 0;
   const factor = 1 - (distance / radius);
@@ -141,37 +169,56 @@ export function calculateExplosionDamage(
 }
 
 /**
- * Objective status calculation
+ * Objective status and narrative chapter calculation
  */
 export function getMissionPhase(
   coresInserted: number,
   bossDefeated: boolean,
   hangarBreached: boolean
-): { phase: number; title: string; hint: string } {
+): {
+  phase: number;
+  chapterTitle: string;
+  title: string;
+  hint: string;
+  radioSender: 'Alyx Vance' | 'Dr. Judith Mossman' | 'Combine Overwatch' | 'The G-Man';
+  radioMessage: string;
+} {
   if (coresInserted < 2) {
     return {
       phase: 1,
-      title: `POWER GENERATOR: Slot Energy Cores (${coresInserted}/2)`,
-      hint: 'Use Gravity Gun (Right-Click) to grab energy batteries and punt them into the reactor sockets.',
+      chapterTitle: 'CHAPTER 1: THE ARCTIC INGRESS',
+      title: `PRIMARY ION DRIVE: Insert Zero-Point Batteries (${coresInserted}/2)`,
+      hint: 'Use the Gravity Gun (Right-Click) to grab battery cores from the container yard and slot them into the reactor sockets.',
+      radioSender: 'Alyx Vance',
+      radioMessage: 'Gordon, Eli and I have your telemetry! Combine scouts are patrolling the perimeter. Get the Primary Ion Drive online to overload their containment grid!',
     };
   }
   if (!bossDefeated) {
     return {
       phase: 2,
-      title: 'COMBINE HUNTER DETECTED: Eliminate Heavy Armor Unit',
-      hint: 'Punt explosive red barrels and saw blades at the Combine Hunter to breach its energy shield!',
+      chapterTitle: 'CHAPTER 2: OVERWATCH HUNTER ASSAULT',
+      title: 'WARNING: Combine Synth Hunter Unit Deployed',
+      hint: 'Hunter armor is heavily reinforced! Punt explosive red barrels and heavy supply crates into its chassis to breach its shielding.',
+      radioSender: 'Combine Overwatch',
+      radioMessage: 'Warning to all Overwatch units. Anti-citizen Freeman active in drydock sector. Heavy Hunter synthetic deployed. Execute pacification.',
     };
   }
   if (!hangarBreached) {
     return {
       phase: 3,
-      title: 'BOREALIS DOCK BREACH: Access the Dimensional Teleport Bridge',
-      hint: 'The forcefield has dropped. Enter the Borealis hangar and activate the dimensional bridge.',
+      chapterTitle: 'CHAPTER 3: BREACHING THE BOREALIS DRYDOCK',
+      title: 'CONTAINMENT COLLAPSED: Enter the Aperture Drydock',
+      hint: 'The forcefield has dropped. Enter through the hangar blast doors and reach the dimensional teleport bridge.',
+      radioSender: 'Dr. Judith Mossman',
+      radioMessage: 'Gordon, the forcefield has fallen! The Aperture Science teleport core is just beyond the hangar blast doors. Hurry before the Citadel sends reinforcements!',
     };
   }
   return {
     phase: 4,
-    title: 'MISSION COMPLETE: Dimensional Portal Stabilized',
-    hint: 'Gordon Freeman has secured the Borealis prototype.',
+    chapterTitle: 'CHAPTER 4: THE APERTURE TELEPORT CORE',
+    title: 'MISSION COMPLETE: Dimensional Core Secured',
+    hint: 'Gordon Freeman has breached the Borealis and stabilized the dimensional matrix.',
+    radioSender: 'The G-Man',
+    radioMessage: 'Rather than offer you the illusion of free choice, I shall take the liberty of choosing for you... until your time comes round again.',
   };
 }
